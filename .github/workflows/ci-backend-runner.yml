@@ -1,0 +1,78 @@
+# Updated self hosted runner cluster related to backend project
+name: AKS Self Hosted Runner
+
+on: push
+
+env:
+  GH_TOKEN: ${{ secrets.GH_TOKEN }}
+  GITHUB_REPO_OWNER: techmodel
+  GITHUB_REPO_NAME: techmodel-back
+  GITHUB_REPO_URL: https://github.com/techmodel/techmodel-back
+  RESOURCE_GROUP_NAME: ${{ secrets.RESOURCE_GROUP_NAME }}
+  ARM_CLIENT_ID: ${{ secrets.ARM_CLIENT_ID }}
+  ARM_CLIENT_SECRET: ${{ secrets.ARM_CLIENT_SECRET }}
+  STORAGE_ACCOUNT_NAME: ${{ secrets.STORAGE_ACCOUNT_NAME }}
+  STORAGE_CONTAINER_NAME: ${{ secrets.STORAGE_CONTAINER_NAME }}
+  ARM_ACCESS_KEY: ${{ secrets.ARM_ACCESS_KEY }}
+  ARM_SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID }}
+  ARM_TENANT_ID: ${{ secrets.ARM_TENANT_ID }}
+  CLUSTER_NAME: ${{ secrets.CLUSTER_NAME }}
+  LC_CTYPE: ${{ secrets.LC_CTYPE }}
+  AZURE_CREDENTIALS: ${{ secrets.AZURE_CREDENTIALS }}
+  VERSION: 0.0.1
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    # will run only when pushed to main branch
+    if: success() && github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: azure/login@v1
+        with:
+          creds: ${{ env.AZURE_CREDENTIALS }}
+
+      # set kubernetes context (kubeconfig)
+      - name: AKS set context
+        uses: azure/aks-set-context@v1
+        with:
+          creds: ${{ env.AZURE_CREDENTIALS }}
+          resource-group: ${{ env.RESOURCE_GROUP_NAME }}
+          cluster-name: ${{ env.CLUSTER_NAME }}
+
+      - name: Helm clean - remove runners
+        run: helm uninstall ghrunner
+
+      - name: Build runner image
+        run: |
+          az configure --defaults acr=${{ env.RESOURCE_GROUP_NAME }} \
+          && az acr build -t ghrunner:${{ env.VERSION }} ./ghrdocker
+
+      - name: Build & push chart to registry
+        run: |
+          export HELM_EXPERIMENTAL_OCI=1 && \
+          az configure --defaults acr=${{env.RESOURCE_GROUP_NAME}} && \
+          az acr login -n ${{env.RESOURCE_GROUP_NAME}} && \
+          cd ./ghrhelm && \
+          helm package . && \
+          helm push ghr-${{env.VERSION}}.tgz oci://${{env.RESOURCE_GROUP_NAME}}.azurecr.io/ghrunner && \
+          az acr repository show --name ${{env.RESOURCE_GROUP_NAME}} --repository ghrunner && \
+          rm ghr-${{env.VERSION}}.tgz
+
+      - name: Deploy new runners
+        run: |
+          export HELM_EXPERIMENTAL_OCI=1 && \
+          az configure --defaults acr=${{env.RESOURCE_GROUP_NAME}} && \
+          az acr login -n ${{env.RESOURCE_GROUP_NAME}} && \
+          az aks get-credentials --name ${{env.CLUSTER_NAME}} --resource-group ${{env.RESOURCE_GROUP_NAME}} && \
+          az configure --defaults acr=${{env.RESOURCE_GROUP_NAME}} && \
+          helm pull oci://${{env.RESOURCE_GROUP_NAME}}.azurecr.io/ghrunner/ghr --version ${{env.VERSION}} && \
+          helm install ghrunner ghr-${{env.VERSION}}.tgz \
+          --set image.repository=${{env.RESOURCE_GROUP_NAME}}.azurecr.io/ghrunner \
+          --set ghr.github_token=${{env.GH_TOKEN}} \
+          --set ghr.repo_name=${{env.GITHUB_REPO_NAME}} \
+          --set ghr.repo_url=${{env.GITHUB_REPO_URL}} \
+          --set ghr.repo_owner=${{env.GITHUB_REPO_OWNER}} && \
+          rm ghr-${{env.VERSION}}.tgz

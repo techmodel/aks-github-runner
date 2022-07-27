@@ -57,16 +57,16 @@ variable "cluster_name" {
 }
 
 variable "agents_size" {
-  type = string
+  type    = string
   default = "Standard_D2_v2"
 }
 
 variable "agents_count" {
-  type = string
+  type    = string
   default = "2"
 }
 
 variable "kubernetes_version" {
-  type = string
-  default = "1.21.2"
+  type    = string
+  default = "1.21.14"
 }

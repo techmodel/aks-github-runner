@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Any subsequent(*) commands which fail will cause the shell script to exit immediately
+set -e
+
 usage="$(basename "$0") [-h] [-c CLUSTER_NAME] [-g RESOURCE_GROUP_NAME] [-s SUBSCRIPTION_ID] [-r REGION]
 Creates a service principal and storage account for using terraform on Azure
 where:
@@ -28,19 +31,19 @@ if [ ! "$cluster_name" ] || [ ! "$resource_group_name" ] || [ ! "$subscription" 
   echo "$usage" >&2; exit 1
 fi
 
-if ! command -v jq &> /dev/null
+if ! command -v jq
 then
     echo "jq could not be found, please make sure jq is installed and in your path "
     exit
 fi
 
-if ! command -v az &> /dev/null
+if ! command -v az
 then
     echo "az could not be found, please make sure azure-cli is installed and in your path"
     exit
 fi
 
-if ! command -v gh &> /dev/null
+if ! command -v gh
 then
     echo "gh could not be found, please make sure github cli is installed and in your path"
     exit
@@ -53,12 +56,12 @@ echo "Resource Group Name: $resource_group_name";
 echo "Subscription: $subscription";
 echo "Region: $region";
 
-STORAGE_ACCOUNT_NAME=$(echo "${resource_group_name}" | tr '[:upper:]' '[:lower:]')$RANDOM
+STORAGE_ACCOUNT_NAME=$(echo "${resource_group_name}" | tr '[:upper:]' '[:lower:]')storage
 CONTAINER_NAME=$(echo "${cluster_name}" | tr '[:upper:]' '[:lower:]')tfstate
 
-az account set --subscription $subscription &> /dev/null
+az account set --subscription $subscription
 # Create resource group
-az group create --location $region --resource-group $resource_group_name &> /dev/null
+az group create --location $region --resource-group $resource_group_name
 
 #Create service principal and give it access to group
 SP_OUTPUT=$(az ad sp create-for-rbac --name $resource_group_name --role contributor --scopes /subscriptions/$subscription)
@@ -68,13 +71,13 @@ ARM_CLIENT_SECRET=$(echo $SP_OUTPUT | jq -r .password)
 ARM_TENANT_ID=$(echo $SP_OUTPUT | jq -r .tenant)
 
 # Create storage account
-az storage account create --resource-group $resource_group_name --name $STORAGE_ACCOUNT_NAME --sku Standard_LRS --encryption-services blob &> /dev/null
+az storage account create --resource-group $resource_group_name --name $STORAGE_ACCOUNT_NAME --sku Standard_LRS --encryption-services blob
 
 # Get storage account key
 ACCOUNT_KEY=$(az storage account keys list --resource-group $resource_group_name --account-name $STORAGE_ACCOUNT_NAME --query '[0].value' -o tsv) 
 
 # Create blob container
-az storage container create --name $CONTAINER_NAME --account-name $STORAGE_ACCOUNT_NAME --account-key $ACCOUNT_KEY &> /dev/null
+az storage container create --name $CONTAINER_NAME --account-name $STORAGE_ACCOUNT_NAME --account-key $ACCOUNT_KEY
 
 # gh secret set
 echo "Saving secrets to github"
