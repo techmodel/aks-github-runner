@@ -15,7 +15,7 @@ Ensure you have the following dependencies:
 - [Create a github personal access token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/creating-a-personal-access-token) -- and export the value -- export GH_TOKEN=paste_your_token_here
 
 Run the setup.sh script
-- Syntax: **. ./setup.sh** [-c CLUSTER_NAME] [-g RESOURCE_GROUP_NAME] [-s SUBSCRIPTION_ID] [-r REGION] (the extra dot is important)
+- Syntax: **. ./setup.sh** [-c CLUSTER_NAME] [-g RESOURCE_GROUP_NAME] [-s SUBSCRIPTION_ID] [-r REGION] (the extra dot is important - https://superuser.com/questions/1136409/what-is-the-dot-space-filename-command-doing-in-bash)
 - make setup_cmd provides an example version
 
 This script does the following:
@@ -35,37 +35,19 @@ If running locally:
 
 This uses the repo makefile to create your AKS cluster, create an ACR, and deploy the runner to the cluster
 
-## Next steps
 
-- dynamically set repo owner/repo name
-- check for GH_TOKEN before deploying
-- remove helm install note
-- check for all other variables in makefile (gh secret get?)
-- add workflow / instructions
-- Validate setup for an organization
-- Multiple node pool
-- Cluster autoscaling
-- Virtual nodes?
+### Setting AZURE_CREDENTIALS Secret
+https://github.com/Azure/actions-workflow-samples/blob/master/assets/create-secrets-for-GitHub-workflows.md
 
-## Contributing
+### TODO: 
+- create a config file for kubernetes to set context to ghrunner cluster
+- configure the ci.yml to run helm and update the runners
 
-This project welcomes contributions and suggestions.  Most contributions require you to agree to a
-Contributor License Agreement (CLA) declaring that you have the right to, and actually do, grant us
-the rights to use your contribution. For details, visit https://cla.opensource.microsoft.com.
 
-When you submit a pull request, a CLA bot will automatically determine whether you need to provide
-a CLA and decorate the PR appropriately (e.g., status check, comment). Simply follow the instructions
-provided by the bot. You will only need to do this once across all repos using our CLA.
+### Github Self Hosted Runner Docs
+- https://docs.github.com/en/actions/hosting-your-own-runners/about-self-hosted-runners
+- security hardening - https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions#hardening-for-self-hosted-runners
 
-This project has adopted the [Microsoft Open Source Code of Conduct](https://opensource.microsoft.com/codeofconduct/).
-For more information see the [Code of Conduct FAQ](https://opensource.microsoft.com/codeofconduct/faq/) or
-contact [opencode@microsoft.com](mailto:opencode@microsoft.com) with any additional questions or comments.
-
-## Trademarks
-
-This project may contain trademarks or logos for projects, products, or services. Authorized use of Microsoft 
-trademarks or logos is subject to and must follow 
-[Microsoft's Trademark & Brand Guidelines](https://www.microsoft.com/en-us/legal/intellectualproperty/trademarks/usage/general).
-Use of Microsoft trademarks or logos in modified versions of this project must not cause confusion or imply Microsoft sponsorship.
-Any use of third-party trademarks or logos are subject to those third-party's policies.
-
+### How I Ran It
+ATM, it only works if we try to run it locally using terraform and the make file.
+Using terraform all over again is probably not necessary, but using the make file might be, to perform changes to our self hosted runners
